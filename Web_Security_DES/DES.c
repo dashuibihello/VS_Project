@@ -1,5 +1,6 @@
 #include "DES.h"
 
+//IP置换表
 int IP_Table[64] = {
 	58, 50, 42, 34, 26, 18, 10, 2,
 	60, 52, 44, 36, 28, 20, 12, 4,
@@ -11,6 +12,7 @@ int IP_Table[64] = {
 	63, 55, 47, 39, 31, 23, 15, 7
 };
 
+//IP逆置换表
 int IP_Inv_Table[64] = {
 	40, 8, 48, 16, 56, 24, 64, 32,
 	39, 7, 47, 15, 55, 23, 63, 31,
@@ -33,6 +35,7 @@ void DES_E(char input[], char key_char[8], int output[][64], int length) {
 				count++;
 			}
 		}
+		//将最后一个块补充为8个字节
 		else {
 			for (int i = 0; i < length % 8; i++) {
 				block[i] = input[count];
@@ -60,6 +63,7 @@ void DES_D(int input[][64], char key_char[8], char output[], int length) {
 			output[i * 8 + j] = block[j];
 		}
 	}
+	//解密时对当初填充字节的消去
 	int flag = 0;
 	for (int i = 0; i < last_num - 48; i++) {
 		if (output[length * 8 - 1 - i] == last_num) {
@@ -77,18 +81,23 @@ void DES_D(int input[][64], char key_char[8], char output[], int length) {
 }
 
 void DES_E_Block(char input[8], char key_char[8], int output[64]) {
+	//将输入的8个字节的块转换为64位
 	int inputToBit[64] = { 0 };
 	ByteToBit(input, inputToBit);
 
+	//进行IP置换
 	int IP[64] = { 0 };
 	IP_Or_Inv_IP(inputToBit, IP, IP_Table);
 
+	//将密钥转换位64位
 	int key[64] = { 0 };
 	ByteToBit(key_char, key);
 
+	//获取子密钥
 	int subKeys[16][48] = { 0 };
 	GetSubKey(key, subKeys);
-
+	
+	//对LiRi进行迭代变换
 	int L[17][32] = { 0 }, R[17][32] = { 0 };
 	for (int i = 0; i < 32; i++) {
 		L[0][i] = IP[i];
@@ -101,23 +110,31 @@ void DES_E_Block(char input[8], char key_char[8], int output[64]) {
 		Feistel(R[i - 1], R[i], subKeys[i - 1]);
 		XOR(R[i], L[i - 1], 32);
 	}
+	//迭代输出结果temp为R16L16
 	int temp[64] = { 0 };
 	for (int i = 0; i < 32; i++) {
 		temp[i] = R[16][i];
 		temp[i + 32] = L[16][i];
 	}
+
+	//将迭代结果IP逆置换
 	IP_Or_Inv_IP(temp, output, IP_Inv_Table);
 }
 
 void DES_D_Block(int input[64], char key_char[8], char output[8]) {
+	//对输入数据进行IP置换
 	int IP[64] = { 0 };
 	IP_Or_Inv_IP(input, IP, IP_Table);
 
+	//将密钥转换位64位
 	int key[64] = { 0 };
 	ByteToBit(key_char, key);
+
+	//获取子密钥
 	int subKeys[16][48] = { 0 };
 	GetSubKey(key, subKeys);
 
+	//对LR进行迭代变换
 	int L[17][32] = { 0 }, R[17][32] = { 0 };
 	for (int i = 0; i < 32; i++) {
 		L[0][i] = IP[i];
@@ -130,13 +147,18 @@ void DES_D_Block(int input[64], char key_char[8], char output[8]) {
 		Feistel(R[i - 1], R[i], subKeys[16 - i]);
 		XOR(R[i], L[i - 1], 32);
 	}
+	//迭代输出结果temp为R16L16(这里实际为原本的L0R0)
 	int temp[64] = { 0 };
 	for (int i = 0; i < 32; i++) {
 		temp[i] = R[16][i];
 		temp[i + 32] = L[16][i];
 	}
+
+	//对迭代结果进行IP逆置换
 	int output_temp[64] = { 0 };
 	IP_Or_Inv_IP(temp, output_temp, IP_Inv_Table);
+
+	//将IP逆置换结果转换为字符
 	memset(output, 0, 8);
 	BitToByte(output_temp, output);
 }
