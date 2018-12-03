@@ -2,7 +2,11 @@
 #include <WinSock2.h>
 #include <string>
 #include <iostream>
+#include <cstring>
+#include <fstream>
 #pragma comment(lib,"ws2_32.lib")
+
+#define BUFFER_SIZE 1024 
 
 using namespace std;
 
@@ -18,4 +22,20 @@ private:
 	char* myServerAddress;
 	char* myAction;
 	SOCKET client;
+	SOCKADDR_IN Addr_des;
+	int Addr_des_len;
+
+
+	/* 包头 */
+	typedef struct {
+		int id;
+		int buf_size;
+	}PackInfo;
+
+	/* 接收包 */
+	struct RecvPack {
+		PackInfo head;
+		char buf[BUFFER_SIZE];
+	} data;
+
 };
